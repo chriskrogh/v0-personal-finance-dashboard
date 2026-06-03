@@ -23,37 +23,73 @@ interface TransactionListProps {
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
-  food: Utensils,
-  dining: Utensils,
-  restaurant: Utensils,
-  shopping: ShoppingBag,
-  retail: ShoppingBag,
-  housing: Home,
-  rent: Home,
-  mortgage: Home,
-  transport: Car,
-  transportation: Car,
-  travel: Plane,
-  entertainment: Gamepad2,
-  health: Heart,
-  healthcare: Heart,
+  // Food & Drink
+  GROCERIES: Utensils,
+  RESTAURANT: Utensils,
+  FAST_FOOD: Utensils,
+  COFFEE: Utensils,
+  DRINKS: Utensils,
+  DELIVERY: Utensils,
+  VENDING_MACHINE: Utensils,
+  // Shopping
+  SHOPPING: ShoppingBag,
+  CLOTHING: ShoppingBag,
+  ELECTRONICS: ShoppingBag,
+  // Housing
+  RENT: Home,
+  MORTGAGE: Home,
+  ELECTRICITY: Home,
+  INTERNET: Home,
+  PHONE: Home,
+  FURNITURE: Home,
+  HYDRO: Home,
+  // Transport
+  GAS: Car,
+  PARKING: Car,
+  REPAIR: Car,
+  TAXI: Car,
+  BUS: Car,
+  TRAIN: Car,
+  BIKESHARE: Car,
+  FLIGHT: Plane,
+  // Entertainment
+  SUBSCRIPTIONS: Gamepad2,
+  VIDEO_GAMES: Gamepad2,
+  CINEMA: Gamepad2,
+  CONCERT: Gamepad2,
+  MUSIC: Gamepad2,
+  HOBBY: Gamepad2,
+  NIGHTLIFE: Gamepad2,
+  SPORTS: Gamepad2,
+  VACATION: Plane,
+  // Health
+  DOCTOR: Heart,
+  DENTIST: Heart,
+  MEDICINE: Heart,
+  PHARMACY: Heart,
+  THERAPY: Heart,
+  VISION: Heart,
+  GYM: Heart,
+  // Income
+  SALARY: ArrowDownLeft,
+  DIVIDEND: ArrowDownLeft,
+  INTEREST: ArrowDownLeft,
+  REFUND: ArrowDownLeft,
+  TRANSFER_IN: ArrowDownLeft,
   default: CreditCard,
 };
 
 function getCategoryIcon(category?: string) {
   if (!category) return CreditCard;
-  const lowerCategory = category.toLowerCase();
-  for (const [key, icon] of Object.entries(categoryIcons)) {
-    if (lowerCategory.includes(key)) return icon;
-  }
-  return CreditCard;
+  return categoryIcons[category] || CreditCard;
 }
 
-function formatCurrency(amount: number, currency: string = "USD") {
+function formatCurrency(amountCents: number, currency: string | null = "USD") {
+  const amount = Math.abs(amountCents) / 100;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency,
-  }).format(Math.abs(amount));
+    currency: currency || "USD",
+  }).format(amount);
 }
 
 function formatDate(dateString: string) {
@@ -145,7 +181,7 @@ export function TransactionList({
         <div className="divide-y divide-border">
           {transactions.map((transaction) => {
             const Icon = getCategoryIcon(transaction.category);
-            const isIncome = transaction.amount > 0;
+            const isIncome = transaction.type === "INCOME";
 
             return (
               <div
@@ -157,14 +193,14 @@ export function TransactionList({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">
-                    {transaction.merchant || transaction.description}
+                    {transaction.merchant_name || transaction.title}
                   </p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span>{formatDate(transaction.date)}</span>
                     {transaction.category && (
                       <>
                         <span>·</span>
-                        <span className="capitalize">{transaction.category}</span>
+                        <span className="capitalize">{transaction.category.toLowerCase().replace(/_/g, " ")}</span>
                       </>
                     )}
                     {transaction.pending && (
@@ -187,7 +223,7 @@ export function TransactionList({
                     }`}
                   >
                     {isIncome ? "+" : "-"}
-                    {formatCurrency(transaction.amount, transaction.currency)}
+                    {formatCurrency(transaction.amount_cents, transaction.currency)}
                   </span>
                 </div>
               </div>

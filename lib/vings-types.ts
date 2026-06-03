@@ -11,20 +11,25 @@ export interface VingsUser {
 export interface VingsTransaction {
   id: string;
   date: string;
-  description: string;
-  amount: number;
-  currency: string;
-  category?: string;
-  merchant?: string;
-  account_name?: string;
-  pending?: boolean;
+  title: string;
+  amount_cents: number;
+  currency: string | null;
+  type: "INCOME" | "EXPENSE" | "INTERNAL_TRANSFER";
+  category: string;
+  pending: boolean;
+  merchant_name?: string | null;
+  account_name?: string | null;
+  bank_name?: string | null;
+  plaid_category?: string | null;
+  linked_transaction_id?: string | null;
 }
 
 export interface VingsTransactionsResponse {
   transactions: VingsTransaction[];
-  total?: number;
-  page?: number;
-  per_page?: number;
+  pagination: {
+    nextCursor: { date: string; id: string } | null;
+    hasMore: boolean;
+  };
 }
 
 export interface VingsApiError {

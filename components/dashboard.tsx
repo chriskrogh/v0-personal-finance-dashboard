@@ -32,7 +32,7 @@ export function Dashboard() {
     isLoading: transactionsLoading,
     mutate: refreshTransactions,
   } = useSWR<VingsTransactionsResponse>(
-    "/api/vings/v1/transactions?limit=5",
+    "/api/vings/v1/transactions?pageSize=5",
     fetcher
   );
 
