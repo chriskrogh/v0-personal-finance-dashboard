@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens } from "@/lib/vings-oauth";
+import { AUTH_ERROR_CODES } from "@/lib/auth-errors";
+import { logger } from "@/lib/logger";
 import { cookies } from "next/headers";
+
+function redirectWithError(request: NextRequest, code: string) {
+  const errorUrl = new URL("/", request.url);
+  errorUrl.searchParams.set("error", code);
+  return NextResponse.redirect(errorUrl);
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -9,70 +17,54 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  console.log("[v0] Callback received - code:", code?.slice(0, 8), "state:", state?.slice(0, 8));
+  logger.debug(
+    "[auth] Callback received",
+    code ? "code present" : "no code",
+    state ? "state present" : "no state"
+  );
 
-  // Handle OAuth errors
   if (error) {
-    console.log("[v0] OAuth error:", error, errorDescription);
-    const errorUrl = new URL("/", request.url);
-    errorUrl.searchParams.set("error", errorDescription || error);
-    return NextResponse.redirect(errorUrl);
+    logger.error("[auth] OAuth error:", error, errorDescription);
+    return redirectWithError(request, AUTH_ERROR_CODES.OAUTH_DENIED);
   }
 
   if (!code) {
-    console.log("[v0] No authorization code received");
-    const errorUrl = new URL("/", request.url);
-    errorUrl.searchParams.set("error", "No authorization code received");
-    return NextResponse.redirect(errorUrl);
+    logger.debug("[auth] No authorization code received");
+    return redirectWithError(request, AUTH_ERROR_CODES.NO_CODE);
   }
 
-  // Verify state matches
   const cookieStore = await cookies();
   const storedState = cookieStore.get("oauth_state")?.value;
   const storedVerifier = cookieStore.get("oauth_verifier")?.value;
 
-  console.log("[v0] Stored state:", storedState?.slice(0, 8), "Stored verifier exists:", !!storedVerifier);
-  console.log("[v0] All cookies:", cookieStore.getAll().map(c => c.name));
-
   if (!storedState || storedState !== state) {
-    console.log("[v0] State mismatch - stored:", storedState, "received:", state);
-    const errorUrl = new URL("/", request.url);
-    errorUrl.searchParams.set("error", "Invalid state parameter. Cookies may have been lost during redirect.");
-    return NextResponse.redirect(errorUrl);
+    logger.error("[auth] State mismatch");
+    return redirectWithError(request, AUTH_ERROR_CODES.INVALID_STATE);
   }
 
   if (!storedVerifier) {
-    console.log("[v0] Missing code verifier cookie");
-    const errorUrl = new URL("/", request.url);
-    errorUrl.searchParams.set("error", "Missing code verifier. Cookies may have been lost during redirect.");
-    return NextResponse.redirect(errorUrl);
+    logger.debug("[auth] Missing code verifier cookie");
+    return redirectWithError(request, AUTH_ERROR_CODES.MISSING_VERIFIER);
   }
 
   const clientId = process.env.VINGS_OAUTH_CLIENT_ID;
   if (!clientId) {
-    const errorUrl = new URL("/", request.url);
-    errorUrl.searchParams.set("error", "OAuth client not configured");
-    return NextResponse.redirect(errorUrl);
+    logger.error("[auth] VINGS_OAUTH_CLIENT_ID not configured");
+    return redirectWithError(request, AUTH_ERROR_CODES.NOT_CONFIGURED);
   }
 
-  // Build redirect URI (must match exactly what was registered)
   const redirectUri = new URL("/auth/callback", request.url).toString();
 
   try {
-    // Exchange code for tokens
-    console.log("[v0] Exchanging code for tokens...");
     const tokens = await exchangeCodeForTokens(
       code,
       storedVerifier,
       clientId,
       redirectUri
     );
-    console.log("[v0] Token exchange successful, expires_in:", tokens.expires_in);
 
-    // Create response with redirect
     const response = NextResponse.redirect(new URL("/", request.url));
 
-    // Store access token in httpOnly cookie
     response.cookies.set("vings_access_token", tokens.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -81,19 +73,12 @@ export async function GET(request: NextRequest) {
       path: "/",
     });
 
-    // Clear OAuth state cookies
     response.cookies.delete("oauth_state");
     response.cookies.delete("oauth_verifier");
 
-    console.log("[v0] Redirecting to home with access token cookie set");
     return response;
   } catch (err) {
-    console.error("[v0] Token exchange error:", err);
-    const errorUrl = new URL("/", request.url);
-    errorUrl.searchParams.set(
-      "error",
-      err instanceof Error ? err.message : "Token exchange failed"
-    );
-    return NextResponse.redirect(errorUrl);
+    logger.error("[auth] Token exchange error:", err);
+    return redirectWithError(request, AUTH_ERROR_CODES.OAUTH_FAILED);
   }
 }

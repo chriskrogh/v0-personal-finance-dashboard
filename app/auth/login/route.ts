@@ -4,6 +4,7 @@ import {
   generateCodeChallenge,
   buildAuthorizationUrl,
 } from "@/lib/vings-oauth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const clientId = process.env.VINGS_OAUTH_CLIENT_ID;
@@ -15,16 +16,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Generate PKCE values
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
   const state = crypto.randomUUID();
 
-  // Build redirect URI
   const redirectUri = new URL("/auth/callback", request.url).toString();
 
   try {
-    // Build authorization URL
     const authUrl = await buildAuthorizationUrl(
       clientId,
       redirectUri,
@@ -32,15 +30,13 @@ export async function GET(request: NextRequest) {
       state
     );
 
-    // Create response with redirect
     const response = NextResponse.redirect(authUrl);
 
-    // Store PKCE verifier and state in cookies
     response.cookies.set("oauth_verifier", codeVerifier, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 600, // 10 minutes
+      maxAge: 600,
       path: "/",
     });
 
@@ -54,9 +50,9 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (err) {
-    console.error("OAuth login error:", err);
+    logger.error("OAuth login error:", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to start OAuth flow" },
+      { error: "Failed to start OAuth flow" },
       { status: 500 }
     );
   }
