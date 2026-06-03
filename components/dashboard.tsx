@@ -46,7 +46,8 @@ export function Dashboard() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    window.location.href = "/auth/logout";
+    await fetch("/auth/logout", { method: "POST", credentials: "same-origin" });
+    window.location.href = "/";
   };
 
   // Handle auth errors - redirect to login
