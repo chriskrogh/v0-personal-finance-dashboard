@@ -42,8 +42,8 @@ export async function discoverOAuthEndpoints(): Promise<{
   const issuer = metadata.authorization_servers[0];
 
   return {
-    authorizationEndpoint: `${issuer}/authorize`,
-    tokenEndpoint: `${issuer}/token`,
+    authorizationEndpoint: `${issuer}/oauth/authorize`,
+    tokenEndpoint: `${issuer}/oauth/token`,
   };
 }
 
