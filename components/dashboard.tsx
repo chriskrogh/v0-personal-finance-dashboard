@@ -24,7 +24,7 @@ export function Dashboard() {
     data: user,
     error: userError,
     isLoading: userLoading,
-  } = useSWR<VingsUser>("/api/vings/v1/me", fetcher);
+  } = useSWR<VingsUser>("/api/vings/me", fetcher);
 
   const {
     data: transactionsData,
@@ -32,7 +32,7 @@ export function Dashboard() {
     isLoading: transactionsLoading,
     mutate: refreshTransactions,
   } = useSWR<VingsTransactionsResponse>(
-    "/api/vings/v1/transactions?pageSize=5",
+    "/api/vings/transactions?pageSize=5",
     fetcher
   );
 
