@@ -1,4 +1,6 @@
-# v0-personal-finance-dashboard
+# Vings Personal Finance Dashboard
+
+A personal finance dashboard that connects to [Vings](https://vin.gs) via OAuth 2.1 PKCE to display your recent transactions.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
 
