@@ -9,14 +9,18 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
+  console.log("[v0] Callback received - code:", code?.slice(0, 8), "state:", state?.slice(0, 8));
+
   // Handle OAuth errors
   if (error) {
+    console.log("[v0] OAuth error:", error, errorDescription);
     const errorUrl = new URL("/", request.url);
     errorUrl.searchParams.set("error", errorDescription || error);
     return NextResponse.redirect(errorUrl);
   }
 
   if (!code) {
+    console.log("[v0] No authorization code received");
     const errorUrl = new URL("/", request.url);
     errorUrl.searchParams.set("error", "No authorization code received");
     return NextResponse.redirect(errorUrl);
@@ -27,15 +31,20 @@ export async function GET(request: NextRequest) {
   const storedState = cookieStore.get("oauth_state")?.value;
   const storedVerifier = cookieStore.get("oauth_verifier")?.value;
 
+  console.log("[v0] Stored state:", storedState?.slice(0, 8), "Stored verifier exists:", !!storedVerifier);
+  console.log("[v0] All cookies:", cookieStore.getAll().map(c => c.name));
+
   if (!storedState || storedState !== state) {
+    console.log("[v0] State mismatch - stored:", storedState, "received:", state);
     const errorUrl = new URL("/", request.url);
-    errorUrl.searchParams.set("error", "Invalid state parameter");
+    errorUrl.searchParams.set("error", "Invalid state parameter. Cookies may have been lost during redirect.");
     return NextResponse.redirect(errorUrl);
   }
 
   if (!storedVerifier) {
+    console.log("[v0] Missing code verifier cookie");
     const errorUrl = new URL("/", request.url);
-    errorUrl.searchParams.set("error", "Missing code verifier");
+    errorUrl.searchParams.set("error", "Missing code verifier. Cookies may have been lost during redirect.");
     return NextResponse.redirect(errorUrl);
   }
 
@@ -51,12 +60,14 @@ export async function GET(request: NextRequest) {
 
   try {
     // Exchange code for tokens
+    console.log("[v0] Exchanging code for tokens...");
     const tokens = await exchangeCodeForTokens(
       code,
       storedVerifier,
       clientId,
       redirectUri
     );
+    console.log("[v0] Token exchange successful, expires_in:", tokens.expires_in);
 
     // Create response with redirect
     const response = NextResponse.redirect(new URL("/", request.url));
@@ -74,9 +85,10 @@ export async function GET(request: NextRequest) {
     response.cookies.delete("oauth_state");
     response.cookies.delete("oauth_verifier");
 
+    console.log("[v0] Redirecting to home with access token cookie set");
     return response;
   } catch (err) {
-    console.error("Token exchange error:", err);
+    console.error("[v0] Token exchange error:", err);
     const errorUrl = new URL("/", request.url);
     errorUrl.searchParams.set(
       "error",
